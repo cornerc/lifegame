@@ -1,0 +1,630 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+</head>
+
+<body>
+
+	<h1>Hello, LifeGame</h1>
+
+	<span>高さ</span>
+	<select name="" onchange="ChangeCol()" id="ChangeCol" class="select">
+	</select>
+	<span>横幅</span>
+	<select name="" onchange="ChangeRow()" id="ChangeRow" class="select">
+	</select>
+
+	<span>テンプレート</span>
+	<select name="" onchange="SetTemplate()" id="SetTemplate" class="select">
+		<option value="none" selected>none</option>
+		<option value="block">ブロック</option>
+		<option value="honeycomb">蜂の巣</option>
+		<option value="boat">ボート</option>
+		<option value="ship">船</option>
+		<option value="pond">池</option>
+
+		<option value="blinker">ブリンカー</option>
+		<option value="toad">ヒキガエル</option>
+		<option value="beacon">ビーコン</option>
+		<option value="clock">時計</option>
+
+		<option value="pulsar">パルサー</option>
+		<option value="octagon">八角形</option>
+		<option value="galaxy">銀河</option>
+		<option value="pentadecathrone">ペンタデカスロン</option>
+
+		<option value="glider">グライダー</option>
+		<option value="lspacecraft">軽量級宇宙船</option>
+		<option value="mspacecraft">中量級宇宙船</option>
+		<option value="wspacecraft">重量級宇宙船</option>
+		
+		<option value="glidergun">グライダー銃</option>
+		<option value="train">シュッポッポ列車</option>
+		<option value="train2">シュッポッポ列車2</option>
+		<option value="breeder">ブリーダー</option>
+		<option value="breeder2">ブリーダー2</option>
+		<option value="breeder3">ブリーダー3</option>
+		<option value="diehard">ダイハード</option>
+		<option value="acorn">ドングリ</option>
+		
+	</select>
+	
+	<br>
+	<span>第&nbsp;<span id="generation">0</span>&nbsp;世代</span>
+	<input type="hidden" id="HCol" value="0" class="textbox" >
+	<input type="hidden" id="HRow" value="0" class="textbox" >
+	<br>
+
+	<table id="table" class="">
+	</table>
+
+	<input type="button" value="start" onclick="StartG()" class = "left_button" />
+	<input type="button" value="stop" onclick="StopG()" class = "right_button" />
+
+	<h3>誕生</h3>
+	<p>死んでいるセルに隣接する生きたセルがちょうど3つあれば、次の世代が誕生する。</p>
+	<h3>生存</h3>
+	<p>生きているセルに隣接する生きたセルが2つか3つならば、次の世代でも生存する。</p>
+	<h3>過疎</h3>
+	<p>生きているセルに隣接する生きたセルが1つ以下ならば、過疎により死滅する。</p>
+	<h3>過密</h3>
+	<p>生きているセルに隣接する生きたセルが4つ以上ならば、過密により死滅する。</p>
+
+</body>
+
+</html>
+
+<style type="text/css">
+h1 {color:blue; line-height:1.5;}
+td { border:solid 1px; }
+.select {width: 150px; margin: 30px;}
+.textbox {width: 150px; margin: 30px;}
+.left_button {width:50px;height:30px;margin: 30px 25px 0 100px;}
+.right_button {width:50px;height:30px;margin-top:30px;}
+.ml300 {margin-left: 300px;}
+.mr25 {margin-right: 25px;}
+.mt30 {margin-top: 30px; }
+
+</style>
+
+<script type="text/javascript">
+
+	var doc = document;
+
+	var dflt_val = 10;
+	var max_val = 1000;
+	var speed = 0.1;
+
+	var Before_tbl, After_tbl;
+	var Cnt_tbl;
+	var RLen, CLen;
+	var gene = 0;
+
+	var StopFlg=1;
+
+	window.onload = function(){
+		CreateSelectBox();
+		CreateTable(dflt_val, dflt_val);
+		ChangeVal();
+	}
+
+	
+	function ChangeColor(i){
+
+		var table = doc.getElementById("table");
+		var cells = doc.getElementsByName(String(i));
+
+		if(cells[0].style.backgroundColor === 'black')
+			cells[0].style.backgroundColor = 'white';
+		else if(cells[0].style.backgroundColor === 'red')
+			cells[0].style.backgroundColor = 'grey';
+		else
+			cells[0].style.backgroundColor = 'black';	
+	}
+
+	function CreateSelectBox(){//セレクトボックスの設定
+
+		var Cols = doc.getElementById("ChangeCol");
+		var Rows = doc.getElementById("ChangeRow");
+		var option, i;
+
+		for (i = 1; i <=max_val; i++) {
+			option = doc.createElement('option');
+			option.setAttribute('value', i);
+			if(i===dflt_val) option.setAttribute('selected', '');
+			option.innerHTML = '<option value="'+i+'">'+i+'</option>';
+			Cols.appendChild(option);
+		}
+
+		for (i = 1; i <=max_val; i++) {
+			option = doc.createElement('option');
+			option.setAttribute('value', i);
+			if(i===dflt_val)option.setAttribute('selected', '');
+			option.innerHTML = '<option value="'+i+'">'+i+'</option>';
+			Rows.appendChild(option);
+		}
+	}
+
+	function CreateTable(RowVal, ColVal){
+		var table = doc.getElementById("table");
+		var rows, cell, i, j;
+
+		for(i=0;i<RowVal;i++){
+			rows = table.insertRow(-1);
+			for(j=0;j<ColVal;j++){
+				cell = rows.insertCell(-1);
+			}
+		}
+	}
+
+	function ChangeVal(){
+
+		//要素数の保存
+		var row = doc.getElementById("ChangeRow").value;
+		var col = doc.getElementById("ChangeCol").value;
+
+		doc.getElementById("HRow").value=row;
+		doc.getElementById("HCol").value=col;
+
+		//色付け
+		var cells = doc.getElementById("table").getElementsByTagName("td");
+		var len = cells.length;
+
+		for(var i = 0; i < len; i++){
+			cells[i].setAttribute('name', String(i));
+			cells[i].setAttribute('onclick', 'ChangeColor('+ i +')');
+			cells[i].setAttribute('onmouseover', 'MouseOver('+ i +')');
+			cells[i].setAttribute('onmouseout', 'MouseOut('+ i +')');
+		}
+
+		//セルの大きさ変更
+		if(parseInt(row)>100 || parseInt(col)>100){
+			document.styleSheets[0].cssRules[1].style.width = '2px';
+			document.styleSheets[0].cssRules[1].style.height = '2px';
+			document.styleSheets[0].cssRules[1].style.border = 'none';
+		}else if(parseInt(row)>50 || parseInt(col)>50){
+			document.styleSheets[0].cssRules[1].style.width = '5px';
+			document.styleSheets[0].cssRules[1].style.height = '5px';
+			document.styleSheets[0].cssRules[1].style.border = 'solid 1px';
+		}else if(parseInt(row)>30 || parseInt(col)>30){
+			document.styleSheets[0].cssRules[1].style.width = '10px';
+			document.styleSheets[0].cssRules[1].style.height = '10px';
+			document.styleSheets[0].cssRules[1].style.border = 'solid 1px';
+		}else {
+			document.styleSheets[0].cssRules[1].style.width = '20px';
+			document.styleSheets[0].cssRules[1].style.height = '20px';
+			document.styleSheets[0].cssRules[1].style.border = 'solid 1px';
+		}
+		SetArray();
+	}
+
+	function ChangeCol(){
+
+		var Col = doc.getElementById("ChangeCol").value;
+		var PreCol = doc.getElementById("HCol").value;
+		var SubCol = parseInt(Col - PreCol);
+		var table, row, cols, cell;
+
+		if(SubCol > 0){
+			while(SubCol-- > 0){
+				table = doc.getElementById("table");
+				row = table.insertRow(-1);
+				cols = table.rows[0].cells.length; //列数
+				while(cols-- > 0){ //列数だけセルを生産する
+					cell = row.insertCell(-1);
+				}
+			}
+		}else if(SubCol < 0){
+			while(SubCol++ < 0){
+				table = doc.getElementById("table");
+				row = table.deleteRow(table.rows.length-1);
+			}
+		}
+
+		ChangeVal();
+	}
+
+	function ChangeRow(){
+		var Row = doc.getElementById("ChangeRow").value;
+		var PreRow = doc.getElementById("HRow").value;
+		var SubRow = parseInt(Row - PreRow);
+		var table, len, cell;
+
+		if(SubRow > 0){
+			while(SubRow-- > 0){
+				table = doc.getElementById("table");
+				len = table.rows.length; 
+				while(len-- > 0){
+					cell = table.rows[len].insertCell(-1);
+				}
+			}
+		}else if(SubRow < 0){
+			while(SubRow++ < 0){
+				table = doc.getElementById("table");
+				len = table.rows.length;
+				while(len-- > 0){
+					cell = table.rows[len].deleteCell(-1);
+				}
+			}
+		}
+
+		ChangeVal();
+	}
+
+	function MouseOver(i){
+		if(StopFlg===0) return;
+		var cells = doc.getElementsByName(String(i));
+
+		if(cells[0].style.backgroundColor === 'black')
+			cells[0].style.backgroundColor = 'red';
+		else
+			cells[0].style.backgroundColor = 'grey';
+	}
+
+	function MouseOut(i){
+		if(StopFlg===0) return;
+		var cells = doc.getElementsByName(String(i));
+
+		if(cells[0].style.backgroundColor === 'grey')
+			cells[0].style.backgroundColor = 'white';
+		else
+			cells[0].style.backgroundColor = 'black';
+	}
+
+	function StartG(){
+		StopFlg=0;
+		var id = setInterval(function(){
+			if(StopFlg===1){　
+				clearInterval(id);
+			}else{
+				LifeGame();
+			}
+		}, speed);
+		//LifeGame(); 
+	}
+
+	function StopG(){
+		StopFlg = 1;
+	}
+
+	function SetArray(){
+		var RLen, CLen;
+		var i, j;
+		Before_tbl = new Array(parseInt(doc.getElementById("HCol").value));
+		After_tbl = new Array(parseInt(doc.getElementById("HCol").value));
+		Cnt_tbl = new Array(parseInt(doc.getElementById("HCol").value));
+
+		RLen = Before_tbl.length;
+		for(i=0; i<RLen; i++){
+			Before_tbl[i] = new Array(parseInt(doc.getElementById("HRow").value));
+			After_tbl[i] = new Array(parseInt(doc.getElementById("HRow").value));
+			Cnt_tbl[i] = new Array(parseInt(doc.getElementById("HRow").value));
+			CLen = Before_tbl[i].length;
+			for(j=0; j<CLen; j++){
+				Cnt_tbl[i][j] = After_tbl[i][j] = 0;
+			}
+		}
+	}
+
+	function LifeGame(){//１世代進展させる。
+
+		var i, j, k, l;
+		var cnt=0, CngFlg = 0;//次世代で変化があるかどうか
+		var NewCell;
+		var cells = doc.getElementById("table").getElementsByTagName("td");
+		
+		doc.getElementById("generation").innerHTML = ++gene;
+
+		RLen = Before_tbl.length;
+		CLen = Before_tbl[0].length;
+
+
+		//現在のテーブルを取得
+		if(gene!=1){//第1世代以外の現在のテーブルを取得
+			for(i=0; i<RLen; i++)
+				Before_tbl[i] = After_tbl[i].concat();
+		}else{//第1世代のみ
+			for(i=0; i<RLen; i++){
+				for(j=0; j<CLen; j++){
+					if(cells[cnt++].style.backgroundColor === 'black'){
+						Before_tbl[i][j] = 1; console.log(cnt);
+					}
+					else{
+						Before_tbl[i][j] = 0;
+					}
+				}
+			}
+		}
+
+		cnt = 0;
+		for(i=0; i<RLen; i++){
+			for(j=0;j<CLen;j++){
+				//隣接している生存マスをカウントする
+				if(i !== RLen-1 && j !== CLen-1){//下辺、右辺以外
+					k = (i === 0) ? i : i-1;
+					for(; k<i+2 ; k++){
+						l = (j===0) ? j : j-1;
+						for(; l<j+2 ; l++){
+							if(k===i && l===j) continue;
+							if(Before_tbl[k][l]) Cnt_tbl[i][j]++;
+						}
+					}
+				}else if(i === RLen-1){//下辺
+					for(k=i-1; k<i+1 ; k++){
+						l = (j===0) ? j : j-1;
+						for(; l<j+2 ; l++){
+							if(k===i&&l===j) continue;
+							if(Before_tbl[k][l]) Cnt_tbl[i][j]++;
+						}
+					}
+				}else{//右辺
+					k = (i===0) ? i : i-1;
+					for(; k<i+2 ; k++){
+						for(l=j-1; l<j+1 ; l++){
+							if(k===i&&l===j) continue;
+							if(Before_tbl[k][l]) Cnt_tbl[i][j]++;
+						}
+					}
+				}
+
+				//次世代のテーブルに更新する。
+				if(Before_tbl[i][j]===0){
+					if(Cnt_tbl[i][j]===3){//誕生
+						cells[cnt].style.backgroundColor = 'black';
+						After_tbl[i][j] = 1;
+						CngFlg++;
+					}
+				} else {
+					if(Cnt_tbl[i][j]===2||Cnt_tbl[i][j]===3){//生存
+						cells[cnt].style.backgroundColor = 'black';
+						After_tbl[i][j] = 1;
+						CngFlg++;
+					} else {//過疎, 過密
+						cells[cnt].style.backgroundColor = 'white';
+						After_tbl[i][j] = 0;
+						CngFlg++;
+					}
+				}
+				cnt++;
+				Cnt_tbl[i][j]=0;//次に備えてリセット。
+			}//end j for
+		}//end i for
+		if(CngFlg===0) StopFlg=1;
+	}
+
+	//テンプレートにまつわる関数群
+	function SetTemplate(){
+
+		StopFlg=1;
+		gene=0;
+		doc.getElementById("generation").innerHTML = gene;
+
+		var Tmp = doc.getElementById('SetTemplate').value;
+
+		switch(Tmp){
+			case 'none':            DChangeTable(10, 10); break;
+			case 'block':           TmpBlock(); break;
+			case 'honeycomb':       TmpHoneycomb(); break;
+			case 'boat':            TmpBoat(); break;
+			case 'ship':            TmpShip(); break;
+			case 'pond':            TmpPond(); break;
+			case 'blinker':         TmpBlinker(); break;
+			case 'toad':            TmpToad(); break;
+			case 'beacon':          TmpBeacon(); break;
+			case 'clock':           TmpClock(); break;
+			case 'pulsar':          TmpPulsar(); break;
+			case 'octagon':         TmpOctagon(); break;
+			case 'galaxy':          TmpGalaxy(); break;
+			case 'pentadecathrone': TmpPentadecathrone(); break;
+			case 'glider':          TmpGlider(); break;
+			case 'lspacecraft':     TmpLspacecraft(); break;
+			case 'mspacecraft':     TmpMspacecraft(); break;
+			case 'wspacecraft':     TmpWspacecraft(); break;
+			case 'glidergun':       TmpGlidergun(); break;
+			case 'train':           TmpTrain(); break;
+			case 'train2':          TmpTrain2(); break;
+			case 'breeder':         TmpBreeder(); break;
+			case 'breeder2':        TmpBreeder2(); break;
+			case 'breeder3':        TmpBreeder3(); break;
+			case 'diehard':         TmpDiehard(); break;
+			case 'acorn':           TmpAcorn(); break;
+		}
+	}
+
+	function DChangeTable(R, C){//プログラム内からのテーブルの変更
+
+		var PreRow = doc.getElementById("HRow").value;
+		var PreCol = doc.getElementById("HCol").value;
+		var cells = doc.getElementById("table").getElementsByTagName("td");
+		var i, len;
+
+		if(PreRow <= R || PreCol <= C)//以前のテーブルの方が小さい
+			for(i=0, len=PreRow * PreCol; i < len; i++)
+				cells[i].style.backgroundColor = 'white';
+
+			doc.getElementById('ChangeRow').value = R;
+			ChangeRow();
+			doc.getElementById('ChangeCol').value = C;
+			ChangeCol();
+
+		if(PreRow > R && PreCol > C)//以前のテーブルの方が大きい
+			for(i=0, len=R * C; i < len; i++)
+				cells[i].style.backgroundColor = 'white';
+		}
+
+		function DSetB(Num){
+			doc.getElementsByName(String(Num))[0].style.backgroundColor = 'black';
+		}
+		function DSetW(Num){
+			doc.getElementsByName(String(Num))[0].style.backgroundColor = 'white';
+		}
+
+		function TmpBlock(){
+			DChangeTable(10, 10);
+			DSetB(11); DSetB(12); DSetB(21); DSetB(22);
+		}
+		function TmpHoneycomb(){
+			DChangeTable(10, 10);
+			DSetB(12); DSetB(13); DSetB(21); DSetB(24); DSetB(32); DSetB(33);
+		}
+		function TmpBoat(){
+			DChangeTable(10, 10);
+			DSetB(11); DSetB(12); DSetB(21); DSetB(23); DSetB(32);
+		}
+		function TmpShip(){
+			DChangeTable(10, 10);
+			DSetB(12); DSetB(13); DSetB(21); DSetB(23); DSetB(31); DSetB(32);
+		}
+		function TmpPond(){
+			DChangeTable(10, 10);
+			DSetB(12); DSetB(13); DSetB(21); DSetB(24); DSetB(31); DSetB(34);
+			DSetB(42); DSetB(43);
+		}
+		function TmpBlinker(){
+			DChangeTable(10, 10);
+			DSetB(21); DSetB(22); DSetB(23);
+		}
+		function TmpToad(){
+			DChangeTable(10, 10);
+			DSetB(12); DSetB(22); DSetB(23); DSetB(32); DSetB(33); DSetB(43);
+		}
+		function TmpBeacon(){
+			DChangeTable(10, 10);
+			DSetB(11); DSetB(12); DSetB(21); DSetB(22); DSetB(33); DSetB(34);
+			DSetB(43); DSetB(44);
+		}
+		function TmpClock(){
+			DChangeTable(10, 10);
+			DSetB(12); DSetB(22); DSetB(24); DSetB(31); DSetB(33); DSetB(43);
+		}
+		function TmpPulsar(){
+			DChangeTable(17, 17);
+			DSetB(38); DSetB(39); DSetB(40); DSetB(44); DSetB(45); DSetB(46);
+			DSetB(70); DSetB(75); DSetB(77); DSetB(82); DSetB(87); DSetB(92);
+			DSetB(94); DSetB(99); DSetB(104); DSetB(109); DSetB(111); DSetB(116);
+			DSetB(123); DSetB(124); DSetB(125); DSetB(129); DSetB(130); DSetB(131); 
+			DSetB(157); DSetB(158); DSetB(159); DSetB(163); DSetB(164); DSetB(165);
+			DSetB(172); DSetB(177); DSetB(179); DSetB(184); DSetB(189); DSetB(194); 
+			DSetB(196); DSetB(201); DSetB(206); DSetB(211); DSetB(213); DSetB(218);
+			DSetB(242); DSetB(243); DSetB(244); DSetB(248); DSetB(249); DSetB(250);
+		}
+		function TmpOctagon(){
+			DChangeTable(10, 10);
+			DSetB(14); DSetB(15); DSetB(23); DSetB(26); DSetB(32); DSetB(37);
+			DSetB(41); DSetB(48); DSetB(51); DSetB(58); DSetB(62); DSetB(67);
+			DSetB(73); DSetB(76); DSetB(84); DSetB(85);
+		}
+		function TmpGalaxy(){
+			DChangeTable(15, 15);
+			DSetB(48); DSetB(49); DSetB(51); DSetB(52); DSetB(53); DSetB(54);
+			DSetB(55); DSetB(56); DSetB(63); DSetB(64); DSetB(66); DSetB(67);
+			DSetB(68); DSetB(69); DSetB(70); DSetB(71); DSetB(78); DSetB(79);
+			DSetB(93); DSetB(94); DSetB(100); DSetB(101); DSetB(108); DSetB(109);
+			DSetB(115); DSetB(116); DSetB(123); DSetB(124); DSetB(130); DSetB(131); 
+			DSetB(145); DSetB(146); DSetB(153); DSetB(154); DSetB(155); DSetB(156);
+			DSetB(157); DSetB(158); DSetB(160); DSetB(161); DSetB(168); DSetB(169);
+			DSetB(170); DSetB(171); DSetB(172); DSetB(173); DSetB(175); DSetB(176);  
+		}
+		function TmpPentadecathrone(){
+			DChangeTable(16, 9);
+			DSetB(53); DSetB(58);
+			DSetB(67); DSetB(68);
+			DSetB(70); DSetB(71);
+			DSetB(72); DSetB(73);
+			DSetB(75); DSetB(76);
+			DSetB(85); DSetB(90);
+		}
+		function TmpGlider(){
+			DChangeTable(15, 15);
+			DSetB(17); DSetB(33);
+			DSetB(46); DSetB(47);
+			DSetB(48);
+		}
+		function TmpLspacecraft(){
+			DChangeTable(20, 8);
+			DSetB(35); DSetB(38);
+			DSetB(54); DSetB(74);
+			DSetB(78); DSetB(94);
+			DSetB(95); DSetB(96);
+			DSetB(97);
+		}
+		function TmpMspacecraft(){
+			DChangeTable(20, 9);
+			DSetB(36); DSetB(54);
+			DSetB(58); DSetB(73);
+			DSetB(93); DSetB(98);
+			DSetB(113); DSetB(114);
+			DSetB(115); DSetB(116);
+			DSetB(117); 
+		}
+		function TmpWspacecraft(){
+			DChangeTable(20, 9);
+			DSetB(35); DSetB(36); DSetB(53); DSetB(58); DSetB(72); DSetB(92);
+			DSetB(98); DSetB(112); DSetB(113); DSetB(114); DSetB(115); DSetB(116);
+			DSetB(117);
+		}
+		function TmpGlidergun(){
+			DChangeTable(38, 25);
+			DSetB(63); DSetB(99); DSetB(101); DSetB(127); DSetB(128); DSetB(135);
+			DSetB(136); DSetB(149); DSetB(150); DSetB(164); DSetB(168); DSetB(173);
+			DSetB(174); DSetB(187); DSetB(188); DSetB(191); DSetB(192); DSetB(201);
+			DSetB(207); DSetB(211); DSetB(212); DSetB(229); DSetB(230); DSetB(239);
+			DSetB(243); DSetB(245); DSetB(246); DSetB(251); DSetB(253); DSetB(277);
+			DSetB(283); DSetB(291); DSetB(316); DSetB(320); DSetB(355); DSetB(356);
+		}
+		function TmpTrain(){
+			DChangeTable(500, 250);
+			DSetB(51036); DSetB(51537); DSetB(52033); DSetB(52037); DSetB(52534); DSetB(52535);
+			DSetB(52536); DSetB(52537); DSetB(54533); DSetB(55034); DSetB(55035); DSetB(55535);
+			DSetB(56035); DSetB(56534); DSetB(58036); DSetB(58537); DSetB(59033); DSetB(59037);
+			DSetB(59534); DSetB(59535); DSetB(59536); DSetB(59537);
+		}
+		function TmpTrain2(){
+			DChangeTable(99, 23);
+			DSetB(104);DSetB(105);
+			DSetB(200);DSetB(201);DSetB(202);DSetB(204);DSetB(205);DSetB(299);
+			DSetB(300);DSetB(301);DSetB(302);DSetB(303);DSetB(399);DSetB(400);
+			DSetB(401);DSetB(695);DSetB(696);DSetB(697);DSetB(698);DSetB(699);
+			DSetB(700);DSetB(701);DSetB(702);DSetB(801);DSetB(900);DSetB(998);
+			DSetB(1196);DSetB(1296);DSetB(1395);DSetB(1487);DSetB(1488);DSetB(1489);
+			DSetB(1490);DSetB(1491);DSetB(1492);DSetB(1493);DSetB(1494);DSetB(1785);
+			DSetB(1786);DSetB(1787);DSetB(1883);DSetB(1884);DSetB(1885);DSetB(1886);
+			DSetB(1887);DSetB(1982);DSetB(1983);DSetB(1984);DSetB(1986);DSetB(1987);
+			DSetB(2084);DSetB(2085);
+		}
+
+//未作成
+function TmpBreeder(){
+	DChangeTable(10, 10);
+	DSetB(12); DSetB(22);
+	DSetB(23); DSetB(32);
+	DSetB(33); DSetB(43);
+}
+
+function TmpBreeder2(){
+	DChangeTable(10, 10);
+	DSetB(12); DSetB(22);
+	DSetB(23); DSetB(32);
+	DSetB(33); DSetB(43);
+}
+
+function TmpBreeder3(){
+	DChangeTable(10, 10);
+	DSetB(12); DSetB(22);
+	DSetB(23); DSetB(32);
+	DSetB(33); DSetB(43);
+}
+
+	function TmpDiehard(){
+		DChangeTable(100, 100);
+		DSetB(4954); DSetB(5048); DSetB(5049); DSetB(5149); DSetB(5153); DSetB(5154);
+		DSetB(5155);
+	}
+	function TmpAcorn(){
+		DChangeTable(260, 260);
+		DSetB(36550); DSetB(36812); DSetB(37069); DSetB(37070); DSetB(37073); DSetB(37074);
+		DSetB(37075);
+	}
+
+
+</script>
